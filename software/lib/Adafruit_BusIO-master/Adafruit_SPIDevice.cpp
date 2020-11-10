@@ -14,7 +14,8 @@
  */
 Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, uint32_t freq,
                                        BitOrder dataOrder, uint8_t dataMode,
-                                       SPIClass *theSPI) {
+                                       SPIClass *theSPI)
+{
   _cs = cspin;
   _sck = _mosi = _miso = -1;
   _spi = theSPI;
@@ -41,7 +42,8 @@ Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, uint32_t freq,
 Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, int8_t sckpin,
                                        int8_t misopin, int8_t mosipin,
                                        uint32_t freq, BitOrder dataOrder,
-                                       uint8_t dataMode) {
+                                       uint8_t dataMode)
+{
   _cs = cspin;
   _sck = sckpin;
   _miso = misopin;
@@ -50,11 +52,13 @@ Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, int8_t sckpin,
 #ifdef BUSIO_USE_FAST_PINIO
   csPort = (BusIO_PortReg *)portOutputRegister(digitalPinToPort(cspin));
   csPinMask = digitalPinToBitMask(cspin);
-  if (mosipin != -1) {
+  if (mosipin != -1)
+  {
     mosiPort = (BusIO_PortReg *)portOutputRegister(digitalPinToPort(mosipin));
     mosiPinMask = digitalPinToBitMask(mosipin);
   }
-  if (misopin != -1) {
+  if (misopin != -1)
+  {
     misoPort = (BusIO_PortReg *)portInputRegister(digitalPinToPort(misopin));
     misoPinMask = digitalPinToBitMask(misopin);
   }
@@ -75,27 +79,36 @@ Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, int8_t sckpin,
  *    @return Always returns true because there's no way to test success of SPI
  * init
  */
-bool Adafruit_SPIDevice::begin(void) {
+bool Adafruit_SPIDevice::begin(void)
+{
   pinMode(_cs, OUTPUT);
   digitalWrite(_cs, HIGH);
 
-  if (_spi) { // hardware SPI
+  if (_spi)
+  { // hardware SPI
     _spi->begin();
-  } else {
+  }
+  else
+  {
     pinMode(_sck, OUTPUT);
 
-    if ((_dataMode == SPI_MODE0) || (_dataMode == SPI_MODE1)) {
+    if ((_dataMode == SPI_MODE0) || (_dataMode == SPI_MODE1))
+    {
       // idle low on mode 0 and 1
       digitalWrite(_sck, LOW);
-    } else {
+    }
+    else
+    {
       // idle high on mode 2 or 3
       digitalWrite(_sck, HIGH);
     }
-    if (_mosi != -1) {
+    if (_mosi != -1)
+    {
       pinMode(_mosi, OUTPUT);
       digitalWrite(_mosi, HIGH);
     }
-    if (_miso != -1) {
+    if (_miso != -1)
+    {
       pinMode(_miso, INPUT);
     }
   }
@@ -109,23 +122,33 @@ bool Adafruit_SPIDevice::begin(void) {
  *    @param  buffer The buffer to send and receive at the same time
  *    @param  len    The number of bytes to transfer
  */
-void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
-  if (_spi) {
+void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len)
+{
+  if (_spi)
+  {
     // hardware SPI is easy
 
 #ifdef SPARK
     _spi->transfer(buffer, buffer, len, NULL);
 #else
-    _spi->transfer(buffer, len);
+    // _spi->transfer(buffer, len);
+    char converting[100];
+
+    strcpy(converting, buffer);
+
+    _spi->transfer(converting);
 #endif
 
     return;
   }
 
   uint8_t startbit;
-  if (_dataOrder == SPI_BITORDER_LSBFIRST) {
+  if (_dataOrder == SPI_BITORDER_LSBFIRST)
+  {
     startbit = 0x1;
-  } else {
+  }
+  else
+  {
     startbit = 0x80;
   }
 
@@ -133,7 +156,8 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
   uint8_t bitdelay_us = (1000000 / _freq) / 2;
 
   // for softSPI we'll do it by hand
-  for (size_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++)
+  {
     // software SPI
     uint8_t reply = 0;
     uint8_t send = buffer[i];
@@ -146,15 +170,19 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
 
     // Serial.print(send, HEX);
     for (uint8_t b = startbit; b != 0;
-         b = (_dataOrder == SPI_BITORDER_LSBFIRST) ? b << 1 : b >> 1) {
+         b = (_dataOrder == SPI_BITORDER_LSBFIRST) ? b << 1 : b >> 1)
+    {
 
-      if (bitdelay_us) {
+      if (bitdelay_us)
+      {
         delayMicroseconds(bitdelay_us);
       }
 
-      if (_dataMode == SPI_MODE0 || _dataMode == SPI_MODE2) {
+      if (_dataMode == SPI_MODE0 || _dataMode == SPI_MODE2)
+      {
         towrite = send & b;
-        if ((_mosi != -1) && (lastmosi != towrite)) {
+        if ((_mosi != -1) && (lastmosi != towrite))
+        {
 #ifdef BUSIO_USE_FAST_PINIO
           if (towrite)
             *mosiPort |= mosiPinMask;
@@ -172,15 +200,19 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
         digitalWrite(_sck, HIGH);
 #endif
 
-        if (bitdelay_us) {
+        if (bitdelay_us)
+        {
           delayMicroseconds(bitdelay_us);
         }
 
-        if (_miso != -1) {
+        if (_miso != -1)
+        {
 #ifdef BUSIO_USE_FAST_PINIO
-          if (*misoPort & misoPinMask) {
+          if (*misoPort & misoPinMask)
+          {
 #else
-          if (digitalRead(_miso)) {
+          if (digitalRead(_miso))
+          {
 #endif
             reply |= b;
           }
@@ -191,7 +223,9 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
 #else
         digitalWrite(_sck, LOW);
 #endif
-      } else { // if (_dataMode == SPI_MODE1 || _dataMode == SPI_MODE3)
+      }
+      else
+      { // if (_dataMode == SPI_MODE1 || _dataMode == SPI_MODE3)
 
 #ifdef BUSIO_USE_FAST_PINIO
         *clkPort |= clkPinMask; // Clock high
@@ -199,11 +233,13 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
         digitalWrite(_sck, HIGH);
 #endif
 
-        if (bitdelay_us) {
+        if (bitdelay_us)
+        {
           delayMicroseconds(bitdelay_us);
         }
 
-        if (_mosi != -1) {
+        if (_mosi != -1)
+        {
 #ifdef BUSIO_USE_FAST_PINIO
           if (send & b)
             *mosiPort |= mosiPinMask;
@@ -220,17 +256,21 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
         digitalWrite(_sck, LOW);
 #endif
 
-        if (_miso != -1) {
+        if (_miso != -1)
+        {
 #ifdef BUSIO_USE_FAST_PINIO
-          if (*misoPort & misoPinMask) {
+          if (*misoPort & misoPinMask)
+          {
 #else
-          if (digitalRead(_miso)) {
+          if (digitalRead(_miso))
+          {
 #endif
             reply |= b;
           }
         }
       }
-      if (_miso != -1) {
+      if (_miso != -1)
+      {
         buffer[i] = reply;
       }
     }
@@ -243,7 +283,8 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len) {
  *    @param  send The byte to send
  *    @return The byte received while transmitting
  */
-uint8_t Adafruit_SPIDevice::transfer(uint8_t send) {
+uint8_t Adafruit_SPIDevice::transfer(uint8_t send)
+{
   uint8_t data = send;
   transfer(&data, 1);
   return data;
@@ -253,8 +294,10 @@ uint8_t Adafruit_SPIDevice::transfer(uint8_t send) {
  *    @brief  Manually begin a transaction (calls beginTransaction if hardware
  * SPI)
  */
-void Adafruit_SPIDevice::beginTransaction(void) {
-  if (_spi) {
+void Adafruit_SPIDevice::beginTransaction(void)
+{
+  if (_spi)
+  {
     _spi->beginTransaction(*_spiSetting);
   }
 }
@@ -262,8 +305,10 @@ void Adafruit_SPIDevice::beginTransaction(void) {
 /*!
  *    @brief  Manually end a transaction (calls endTransaction if hardware SPI)
  */
-void Adafruit_SPIDevice::endTransaction(void) {
-  if (_spi) {
+void Adafruit_SPIDevice::endTransaction(void)
+{
+  if (_spi)
+  {
     _spi->endTransaction();
   }
 }
@@ -279,39 +324,48 @@ void Adafruit_SPIDevice::endTransaction(void) {
  * writes
  */
 bool Adafruit_SPIDevice::write(uint8_t *buffer, size_t len,
-                               uint8_t *prefix_buffer, size_t prefix_len) {
-  if (_spi) {
+                               uint8_t *prefix_buffer, size_t prefix_len)
+{
+  if (_spi)
+  {
     _spi->beginTransaction(*_spiSetting);
   }
 
   digitalWrite(_cs, LOW);
   // do the writing
-  for (size_t i = 0; i < prefix_len; i++) {
+  for (size_t i = 0; i < prefix_len; i++)
+  {
     transfer(prefix_buffer[i]);
   }
-  for (size_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < len; i++)
+  {
     transfer(buffer[i]);
   }
   digitalWrite(_cs, HIGH);
 
-  if (_spi) {
+  if (_spi)
+  {
     _spi->endTransaction();
   }
 
 #ifdef DEBUG_SERIAL
   DEBUG_SERIAL.print(F("\tSPIDevice Wrote: "));
-  if ((prefix_len != 0) && (prefix_buffer != NULL)) {
-    for (uint16_t i = 0; i < prefix_len; i++) {
+  if ((prefix_len != 0) && (prefix_buffer != NULL))
+  {
+    for (uint16_t i = 0; i < prefix_len; i++)
+    {
       DEBUG_SERIAL.print(F("0x"));
       DEBUG_SERIAL.print(prefix_buffer[i], HEX);
       DEBUG_SERIAL.print(F(", "));
     }
   }
-  for (uint16_t i = 0; i < len; i++) {
+  for (uint16_t i = 0; i < len; i++)
+  {
     DEBUG_SERIAL.print(F("0x"));
     DEBUG_SERIAL.print(buffer[i], HEX);
     DEBUG_SERIAL.print(F(", "));
-    if (i % 32 == 31) {
+    if (i % 32 == 31)
+    {
       DEBUG_SERIAL.println();
     }
   }
@@ -330,26 +384,31 @@ bool Adafruit_SPIDevice::write(uint8_t *buffer, size_t len,
  *    @return Always returns true because there's no way to test success of SPI
  * writes
  */
-bool Adafruit_SPIDevice::read(uint8_t *buffer, size_t len, uint8_t sendvalue) {
+bool Adafruit_SPIDevice::read(uint8_t *buffer, size_t len, uint8_t sendvalue)
+{
   memset(buffer, sendvalue, len); // clear out existing buffer
-  if (_spi) {
+  if (_spi)
+  {
     _spi->beginTransaction(*_spiSetting);
   }
   digitalWrite(_cs, LOW);
   transfer(buffer, len);
   digitalWrite(_cs, HIGH);
 
-  if (_spi) {
+  if (_spi)
+  {
     _spi->endTransaction();
   }
 
 #ifdef DEBUG_SERIAL
   DEBUG_SERIAL.print(F("\tSPIDevice Read: "));
-  for (uint16_t i = 0; i < len; i++) {
+  for (uint16_t i = 0; i < len; i++)
+  {
     DEBUG_SERIAL.print(F("0x"));
     DEBUG_SERIAL.print(buffer[i], HEX);
     DEBUG_SERIAL.print(F(", "));
-    if (len % 32 == 31) {
+    if (len % 32 == 31)
+    {
       DEBUG_SERIAL.println();
     }
   }
@@ -374,24 +433,29 @@ bool Adafruit_SPIDevice::read(uint8_t *buffer, size_t len, uint8_t sendvalue) {
  */
 bool Adafruit_SPIDevice::write_then_read(uint8_t *write_buffer,
                                          size_t write_len, uint8_t *read_buffer,
-                                         size_t read_len, uint8_t sendvalue) {
-  if (_spi) {
+                                         size_t read_len, uint8_t sendvalue)
+{
+  if (_spi)
+  {
     _spi->beginTransaction(*_spiSetting);
   }
 
   digitalWrite(_cs, LOW);
   // do the writing
-  for (size_t i = 0; i < write_len; i++) {
+  for (size_t i = 0; i < write_len; i++)
+  {
     transfer(write_buffer[i]);
   }
 
 #ifdef DEBUG_SERIAL
   DEBUG_SERIAL.print(F("\tSPIDevice Wrote: "));
-  for (uint16_t i = 0; i < write_len; i++) {
+  for (uint16_t i = 0; i < write_len; i++)
+  {
     DEBUG_SERIAL.print(F("0x"));
     DEBUG_SERIAL.print(write_buffer[i], HEX);
     DEBUG_SERIAL.print(F(", "));
-    if (write_len % 32 == 31) {
+    if (write_len % 32 == 31)
+    {
       DEBUG_SERIAL.println();
     }
   }
@@ -399,17 +463,20 @@ bool Adafruit_SPIDevice::write_then_read(uint8_t *write_buffer,
 #endif
 
   // do the reading
-  for (size_t i = 0; i < read_len; i++) {
+  for (size_t i = 0; i < read_len; i++)
+  {
     read_buffer[i] = transfer(sendvalue);
   }
 
 #ifdef DEBUG_SERIAL
   DEBUG_SERIAL.print(F("\tSPIDevice Read: "));
-  for (uint16_t i = 0; i < read_len; i++) {
+  for (uint16_t i = 0; i < read_len; i++)
+  {
     DEBUG_SERIAL.print(F("0x"));
     DEBUG_SERIAL.print(read_buffer[i], HEX);
     DEBUG_SERIAL.print(F(", "));
-    if (read_len % 32 == 31) {
+    if (read_len % 32 == 31)
+    {
       DEBUG_SERIAL.println();
     }
   }
@@ -418,7 +485,8 @@ bool Adafruit_SPIDevice::write_then_read(uint8_t *write_buffer,
 
   digitalWrite(_cs, HIGH);
 
-  if (_spi) {
+  if (_spi)
+  {
     _spi->endTransaction();
   }
 
