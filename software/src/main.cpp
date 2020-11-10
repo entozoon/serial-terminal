@@ -11,21 +11,17 @@ For programming via serial:
 Tools/Board set to Generic STM32F103C
 Tools/Upload set to Serial
 Top jumper set to 1, press the button before uploading
-
   PA9 /TX to PC RX (VIOLET)
   PA10/RX to PC TX (GREY)
   3V3              (RED)
   GND              (BLUE)
-
  STM32 SPI1 pins:
   PA4 CS1
   PA5 SCK1
   PA6 MISO1
   PA7 MOSI1
-
   PA11 RST
   PA12 DC
-
 TFT2.2 ILI9341 from top left:
   MISO  PA6
   LED   +3.3V
@@ -36,17 +32,13 @@ TFT2.2 ILI9341 from top left:
   CS    PA4
   GND   GND
   VCC   +3.3V
-
 */
 #include <Arduino.h>
 #include "SPI.h"
-
 #include <Adafruit_GFX_AS.h>      // Core graphics library, with extra fonts.
 #include <Adafruit_ILI9341_STM.h> // STM32 DMA Hardware-specific library
-
 #define ILI9341_VSCRDEF 0x33
 #define ILI9341_VSCRSADD 0x37
-
 int xp = 0;
 int yp = 0;
 uint16_t bg = ILI9341_BLACK;
@@ -59,14 +51,12 @@ int sx = 1;
 int sy = 1;
 int horizontal = -1;
 int scrollMode = 1;
-
 #define WRAP_PIN PB9
 #define HORIZ_PIN PB8
 #define TFT_CS PA4
 #define TFT_DC PA12
 #define TFT_RST PA11
 Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC, TFT_RST); // Use hardware SPI
-
 // Uncomment below the font you find the most readable for you
 // 7x8 bold - perfect for small term font
 #include "font_b7x8.h"
@@ -75,7 +65,6 @@ const uint16_t *fontOffs = font_b7x8_CharOffs;
 int charWd = 7;
 int charHt = 10; // real 8
 int charYoffs = 1;
-
 // 7x8 - perfect for small terminal font
 //#include "font_7x8.h"
 //const uint16_t *fontRects = font_7x8_Rects;
@@ -83,7 +72,6 @@ int charYoffs = 1;
 //int charWd = 7;
 //int charHt = 10; // real 8
 //int charYoffs = 1;
-
 // 6x8
 //#include "font_6x8.h"
 //const uint16_t *fontRects = font_6x8_Rects;
@@ -91,7 +79,6 @@ int charYoffs = 1;
 //int charWd = 6;
 //int charHt = 9; // real 8
 //int charYoffs = 1;
-
 // nice 8x16 vga terminal font
 //#include "font_term_8x16.h"
 //const uint16_t *fontRects = wlcd_font_term_8x16_0_127_Rects;
@@ -99,7 +86,6 @@ int charYoffs = 1;
 //int charWd = 8;
 //int charHt = 16;
 //int charYoffs = 0;
-
 // nice big for terminal
 //#include "font_fxs_8x15.h"
 //const uint16_t *fontRects = wlcd_font_fxs_8x15_16_127_Rects;
@@ -107,7 +93,6 @@ int charYoffs = 1;
 //int charWd = 8;
 //int charHt = 15; // real 15
 //int charYoffs = 0;
-
 // my nice 10x16 term
 //#include "font_term_10x16.h"
 //const uint16_t *fontRects = font_term_10x16_Rects;
@@ -115,7 +100,6 @@ int charYoffs = 1;
 //int charWd = 10;
 //int charHt = 16;
 //int charYoffs = 0;
-
 void drawChar(int16_t x, int16_t y, unsigned char c,
               uint16_t color, uint16_t bg, uint8_t sx, uint8_t sy)
 {
@@ -152,7 +136,12 @@ void drawChar(int16_t x, int16_t y, unsigned char c,
       tft.fillRect(x + xf * sx, y + yf * sy, bold + wf * sx, hf * sy, color);
     }
 }
-
+void scrollFrame(uint16_t vsp)
+{
+  tft.writecommand(ILI9341_VSCRSADD); // Vertical scrolling start address
+  tft.writedata(vsp >> 8);
+  tft.writedata(vsp);
+}
 void scroll()
 {
   xp = 0;
@@ -165,11 +154,9 @@ void scroll()
   else
     scrollFrame(0);
 }
-
 int escMode = 0;
 int nVals = 0;
 int vals[10] = {0};
-
 void printChar(char c)
 {
   if (c == 0x1b)
@@ -267,13 +254,11 @@ void printChar(char c)
   if (xp >= screenWd && wrap)
     scroll();
 }
-
 void printString(char *str)
 {
   while (*str)
     printChar(*str++);
 }
-
 void setupScroll(uint16_t tfa, uint16_t bfa)
 {
   tft.writecommand(ILI9341_VSCRDEF); // Vertical scroll definition
@@ -284,14 +269,6 @@ void setupScroll(uint16_t tfa, uint16_t bfa)
   tft.writedata(bfa >> 8);
   tft.writedata(bfa);
 }
-
-void scrollFrame(uint16_t vsp)
-{
-  tft.writecommand(ILI9341_VSCRSADD); // Vertical scrolling start address
-  tft.writedata(vsp >> 8);
-  tft.writedata(vsp);
-}
-
 void checkButtons()
 {
   wrap = digitalRead(WRAP_PIN) ? 0 : 1;
@@ -305,7 +282,6 @@ void checkButtons()
     screenHt = tft.height();
   }
 }
-
 void setup()
 {
   Serial.begin(115200);
@@ -315,7 +291,6 @@ void setup()
   //  tft.setRotation(2);
   setupScroll(0, 0);
   checkButtons();
-
   tft.setCursor(0, 0);
   tft.fillScreen(ILI9341_BLACK);
   sx = 1;
@@ -323,7 +298,6 @@ void setup()
   printString("\e[0;44m *** Terminal Init *** \e[0m\n");
   sy = 1;
 }
-
 void loop(void)
 {
   checkButtons();
