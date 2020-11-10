@@ -157,8 +157,7 @@ bool Adafruit_I2CDevice::read(uint8_t *buffer, size_t len, bool stop) {
     return false;
   }
 
-  // size_t recv = _wire->requestFrom((uint8_t)_addr, (uint8_t)len, (uint8_t)stop);
-  size_t recv = _wire->requestFrom((uint8_t)_addr, (uint8_t)len);
+  size_t recv = _wire->requestFrom((uint8_t)_addr, (uint8_t)len, (uint8_t)stop);
   if (recv != len) {
     // Not enough data available to fulfill our obligation!
 #ifdef DEBUG_SERIAL
