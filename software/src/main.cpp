@@ -1,306 +1,308 @@
 #include <Arduino.h>
-// (c)2016 Pawel A. Hernik
-// code for the videos:
-// https://www.youtube.com/watch?v=OgaLXoLhz4g
-// https://www.youtube.com/watch?v=DAAbDGCeQ1o
-/*
-CONNECTIONS:
-------------
-STM32:
-For programming via serial:
-Tools/Board set to Generic STM32F103C
-Tools/Upload set to Serial
-Top jumper set to 1, press the button before uploading
-  PA9 /TX to PC RX (VIOLET)
-  PA10/RX to PC TX (GREY)
-  3V3              (RED)
-  GND              (BLUE)
- STM32 SPI1 pins:
-  PA4 CS1
-  PA5 SCK1
-  PA6 MISO1
-  PA7 MOSI1
-  PA11 RST
-  PA12 DC
-TFT2.2 ILI9341 from top left:
-  MISO  PA6
-  LED   +3.3V
-  SCK   PA5
-  MOSI  PA7
-  DC    PA12
-  RST   PA11 or +3V3
-  CS    PA4
-  GND   GND
-  VCC   +3.3V
-*/
-#include <Arduino.h>
-#include "SPI.h"
-#include <Adafruit_GFX_AS.h>      // Core graphics library, with extra fonts.
-#include <Adafruit_ILI9341_STM.h> // STM32 DMA Hardware-specific library
-#define ILI9341_VSCRDEF 0x33
-#define ILI9341_VSCRSADD 0x37
-int xp = 0;
-int yp = 0;
-uint16_t bg = ILI9341_BLACK;
-uint16_t fg = ILI9341_WHITE;
-int screenWd = 240;
-int screenHt = 320;
-int wrap = 0;
-int bold = 0;
-int sx = 1;
-int sy = 1;
-int horizontal = -1;
-int scrollMode = 1;
-#define WRAP_PIN PB9
-#define HORIZ_PIN PB8
-#define TFT_CS PA4
-#define TFT_DC PA12
-#define TFT_RST PA11
-Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC, TFT_RST); // Use hardware SPI
-// Uncomment below the font you find the most readable for you
-// 7x8 bold - perfect for small term font
-#include "font_b7x8.h"
-const uint16_t *fontRects = font_b7x8_Rects;
-const uint16_t *fontOffs = font_b7x8_CharOffs;
-int charWd = 7;
-int charHt = 10; // real 8
-int charYoffs = 1;
-// 7x8 - perfect for small terminal font
-//#include "font_7x8.h"
-//const uint16_t *fontRects = font_7x8_Rects;
-//const uint16_t *fontOffs = font_7x8_CharOffs;
-//int charWd = 7;
-//int charHt = 10; // real 8
-//int charYoffs = 1;
-// 6x8
-//#include "font_6x8.h"
-//const uint16_t *fontRects = font_6x8_Rects;
-//const uint16_t *fontOffs = font_6x8_CharOffs;
-//int charWd = 6;
-//int charHt = 9; // real 8
-//int charYoffs = 1;
-// nice 8x16 vga terminal font
-//#include "font_term_8x16.h"
-//const uint16_t *fontRects = wlcd_font_term_8x16_0_127_Rects;
-//const uint16_t *fontOffs = wlcd_font_term_8x16_0_127_CharOffs;
-//int charWd = 8;
-//int charHt = 16;
-//int charYoffs = 0;
-// nice big for terminal
-//#include "font_fxs_8x15.h"
-//const uint16_t *fontRects = wlcd_font_fxs_8x15_16_127_Rects;
-//const uint16_t *fontOffs = wlcd_font_fxs_8x15_16_127_CharOffs;
-//int charWd = 8;
-//int charHt = 15; // real 15
-//int charYoffs = 0;
-// my nice 10x16 term
-//#include "font_term_10x16.h"
-//const uint16_t *fontRects = font_term_10x16_Rects;
-//const uint16_t *fontOffs = font_term_10x16_CharOffs;
-//int charWd = 10;
-//int charHt = 16;
-//int charYoffs = 0;
-void drawChar(int16_t x, int16_t y, unsigned char c,
-              uint16_t color, uint16_t bg, uint8_t sx, uint8_t sy)
+#include <SPI.h>
+#include <Adafruit_I2CDevice.h>
+#include <Adafruit_GFX.h>
+#include "STM32_TFT_8bit.h"
+STM32_TFT_8bit tft;
+uint32_t ID;
+unsigned long testFillScreen()
 {
-  if ((x >= screenWd) ||             // Clip right
-      (y >= screenHt) ||             // Clip bottom
-      ((x + charWd * sx - 1) < 0) || // Clip left
-      ((y + charHt * sy - 1) < 0))   // Clip top
-    return;
-  if (c > 127)
-    return;
-  uint16_t recIdx = fontOffs[c];
-  uint16_t recNum = fontOffs[c + 1] - recIdx;
-  if (bg && bg != color)
-    tft.fillRect(x, y, charWd * sx, charHt * sy, bg);
-  if (charWd <= 16 && charHt <= 16)
-    for (int i = 0; i < recNum; i++)
+  unsigned long start = micros();
+  tft.fillScreen(BLACK);
+  tft.fillScreen(RED);
+  tft.fillScreen(GREEN);
+  tft.fillScreen(BLUE);
+  tft.fillScreen(BLACK);
+  return micros() - start;
+}
+unsigned long testText(uint32_t ID)
+{
+  tft.fillScreen(BLACK);
+  unsigned long start = micros();
+  tft.setCursor(0, 0);
+  tft.setTextColor(WHITE);
+  tft.setTextSize(1);
+  tft.println("Hello World!");
+  tft.setTextColor(YELLOW);
+  tft.setTextSize(2);
+  tft.println(1234.56);
+  tft.setTextColor(RED);
+  tft.setTextSize(3);
+  tft.print("TFT is ");
+  tft.println(ID, HEX);
+  tft.println();
+  tft.setTextColor(GREEN);
+  tft.setTextSize(5);
+  tft.println("Groop");
+  tft.setTextSize(2);
+  tft.println("I implore thee,");
+  tft.setTextSize(1);
+  tft.println("my foonting turlingdromes.");
+  tft.println("And hooptiously drangle me");
+  tft.println("with crinkly bindlewurdles,");
+  tft.println("Or I will rend thee");
+  tft.println("in the gobberwarts");
+  tft.println("with my blurglecruncheon,");
+  tft.println("see if I don't!");
+  return micros() - start;
+}
+unsigned long testLines(uint16_t color)
+{
+  unsigned long start, t;
+  int x1, y1, x2, y2,
+      w = tft.width(),
+      h = tft.height();
+  tft.fillScreen(BLACK);
+  x1 = y1 = 0;
+  y2 = h - 1;
+  start = micros();
+  for (x2 = 0; x2 < w; x2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  x2 = w - 1;
+  for (y2 = 0; y2 < h; y2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  t = micros() - start; // fillScreen doesn't count against timing
+  tft.fillScreen(BLACK);
+  x1 = w - 1;
+  y1 = 0;
+  y2 = h - 1;
+  start = micros();
+  for (x2 = 0; x2 < w; x2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  x2 = 0;
+  for (y2 = 0; y2 < h; y2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  t += micros() - start;
+  tft.fillScreen(BLACK);
+  x1 = 0;
+  y1 = h - 1;
+  y2 = 0;
+  start = micros();
+  for (x2 = 0; x2 < w; x2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  x2 = w - 1;
+  for (y2 = 0; y2 < h; y2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  t += micros() - start;
+  tft.fillScreen(BLACK);
+  x1 = w - 1;
+  y1 = h - 1;
+  y2 = 0;
+  start = micros();
+  for (x2 = 0; x2 < w; x2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  x2 = 0;
+  for (y2 = 0; y2 < h; y2 += 6)
+    tft.drawLine(x1, y1, x2, y2, color);
+  return micros() - start;
+}
+unsigned long testFastLines(uint16_t color1, uint16_t color2)
+{
+  unsigned long start;
+  int x, y, w = tft.width(), h = tft.height();
+  tft.fillScreen(BLACK);
+  start = micros();
+  for (y = 0; y < h; y += 5)
+    tft.drawFastHLine(0, y, w, color1);
+  for (x = 0; x < w; x += 5)
+    tft.drawFastVLine(x, 0, h, color2);
+  return micros() - start;
+}
+unsigned long testRects(uint16_t color)
+{
+  unsigned long start;
+  int n, i, i2,
+      cx = tft.width() / 2,
+      cy = tft.height() / 2;
+  tft.fillScreen(BLACK);
+  n = min(tft.width(), tft.height());
+  start = micros();
+  for (i = 2; i < n; i += 6)
+  {
+    i2 = i / 2;
+    tft.drawRect(cx - i2, cy - i2, i, i, color);
+  }
+  return micros() - start;
+}
+unsigned long testFilledRects(uint16_t color1, uint16_t color2)
+{
+  unsigned long start, t = 0;
+  int n, i, i2,
+      cx = tft.width() / 2 - 1,
+      cy = tft.height() / 2 - 1;
+  tft.fillScreen(BLACK);
+  n = min(tft.width(), tft.height());
+  for (i = n; i > 0; i -= 6)
+  {
+    i2 = i / 2;
+    start = micros();
+    tft.fillRect(cx - i2, cy - i2, i, i, color1);
+    t += micros() - start;
+    // Outlines are not included in timing results
+    tft.drawRect(cx - i2, cy - i2, i, i, color2);
+  }
+  return t;
+}
+unsigned long testFilledCircles(uint8_t radius, uint16_t color)
+{
+  unsigned long start;
+  int x, y, w = tft.width(), h = tft.height(), r2 = radius * 2;
+  tft.fillScreen(BLACK);
+  start = micros();
+  for (x = radius; x < w; x += r2)
+  {
+    for (y = radius; y < h; y += r2)
     {
-      int v = fontRects[i + recIdx];
-      int xf = v & 0xf;
-      int yf = charYoffs + ((v & 0xf0) >> 4);
-      int wf = 1 + ((v & 0xf00) >> 8);
-      int hf = 1 + ((v & 0xf000) >> 12);
-      tft.fillRect(x + xf * sx, y + yf * sy, bold + wf * sx, hf * sy, color);
+      tft.fillCircle(x, y, radius, color);
     }
-  else
-    for (int i = 0; i < recNum; i++)
+  }
+  return micros() - start;
+}
+unsigned long testCircles(uint8_t radius, uint16_t color)
+{
+  unsigned long start;
+  int x, y, r2 = radius * 2,
+            w = tft.width() + radius,
+            h = tft.height() + radius;
+  // Screen is not cleared for this one -- this is
+  // intentional and does not affect the reported time.
+  start = micros();
+  for (x = 0; x < w; x += r2)
+  {
+    for (y = 0; y < h; y += r2)
     {
-      uint8_t *rects = (uint8_t *)fontRects;
-      int idx = (i + recIdx) * 3;
-      int xf = rects[idx + 0] & 0x3f;
-      int yf = rects[idx + 1] & 0x3f;
-      int wf = 1 + rects[idx + 2] & 0x3f;
-      int hf = 1 + (((rects[idx + 0] & 0xc0) >> 6) | ((rects[idx + 1] & 0xc0) >> 4) | ((rects[idx + 2] & 0xc0) >> 2));
-      tft.fillRect(x + xf * sx, y + yf * sy, bold + wf * sx, hf * sy, color);
+      tft.drawCircle(x, y, radius, color);
     }
+  }
+  return micros() - start;
 }
-void scrollFrame(uint16_t vsp)
+unsigned long testTriangles()
 {
-  tft.writecommand(ILI9341_VSCRSADD); // Vertical scrolling start address
-  tft.writedata(vsp >> 8);
-  tft.writedata(vsp);
+  unsigned long start;
+  int n, i, cx = tft.width() / 2 - 1,
+            cy = tft.height() / 2 - 1;
+  tft.fillScreen(BLACK);
+  n = min(cx, cy);
+  start = micros();
+  for (i = 0; i < n; i += 5)
+  {
+    tft.drawTriangle(
+        cx, cy - i,     // peak
+        cx - i, cy + i, // bottom left
+        cx + i, cy + i, // bottom right
+        NAVY);
+  }
+  return micros() - start;
 }
-void scroll()
+unsigned long testFilledTriangles()
 {
-  xp = 0;
-  yp += charHt * sy;
-  if (yp + charHt > screenHt)
-    yp = 0;
-  tft.fillRect(0, yp, screenWd, charHt * sy, ILI9341_BLACK);
-  if (scrollMode)
-    scrollFrame(320 - yp - charHt * sy);
-  else
-    scrollFrame(0);
+  unsigned long start, t = 0;
+  int i, cx = tft.width() / 2 - 1,
+         cy = tft.height() / 2 - 1;
+  tft.fillScreen(BLACK);
+  start = micros();
+  for (i = min(cx, cy); i > 10; i -= 5)
+  {
+    start = micros();
+    tft.fillTriangle(cx, cy - i, cx - i, cy + i, cx + i, cy + i,
+                     BLACK);
+    t += micros() - start;
+    tft.drawTriangle(cx, cy - i, cx - i, cy + i, cx + i, cy + i,
+                     MAROON);
+  }
+  return t;
 }
-int escMode = 0;
-int nVals = 0;
-int vals[10] = {0};
-void printChar(char c)
+unsigned long testRoundRects()
 {
-  if (c == 0x1b)
+  unsigned long start;
+  int w, i, i2,
+      cx = tft.width() / 2 - 1,
+      cy = tft.height() / 2 - 1;
+  tft.fillScreen(BLACK);
+  w = min(tft.width(), tft.height());
+  start = micros();
+  for (i = 0; i < w; i += 6)
   {
-    escMode = 1;
-    return;
+    i2 = i / 2;
+    tft.drawRoundRect(cx - i2, cy - i2, i, i, i / 8, PINK);
   }
-  if (escMode == 1)
-  {
-    if (c == '[')
-    {
-      escMode = 2;
-      nVals = 0;
-    }
-    else
-      escMode = 0;
-    return;
-  }
-  if (escMode == 2)
-  {
-    if (isdigit(c))
-      vals[nVals] = vals[nVals] * 10 + (c - '0');
-    else if (c == ';')
-      nVals++;
-    else if (c == 'm')
-    {
-      escMode = 0;
-      nVals++;
-      for (int i = 0; i < nVals; i++)
-      {
-        int v = vals[i];
-        static const uint16_t colors[] = {
-            0x0000, // 0-black
-            0xf800, // 1-red
-            0x0780, // 2-green
-            0xfe00, // 3-yellow
-            0x001f, // 4-blue
-            0xf81f, // 5-magenta
-            0x07ff, // 6-cyan
-            0xffff  // 7-white
-        };
-        if (v == 0)
-        { // all attributes off
-          if (nVals == 1)
-          {
-            fg = ILI9341_WHITE;
-            bg = ILI9341_BLACK;
-          }
-          bold = 0;
-        }
-        else if (v == 1)
-        { // all attributes off
-          bold = 1;
-        }
-        else if (v >= 30 && v < 38)
-        { // fg colors
-          fg = colors[v - 30];
-        }
-        else if (v >= 40 && v < 48)
-        {
-          bg = colors[v - 40];
-        }
-      }
-      vals[0] = vals[1] = vals[2] = vals[3] = 0;
-      nVals = 0;
-    }
-    else
-    {
-      escMode = 0;
-      vals[0] = vals[1] = vals[2] = vals[3] = 0;
-      nVals = 0;
-    }
-    return;
-  }
-  if (c == 10)
-  {
-    scroll();
-    return;
-  }
-  if (c == 13)
-  {
-    xp = 0;
-    return;
-  }
-  if (c == 8)
-  {
-    if (xp > 0)
-      xp -= charWd * sx;
-    tft.fillRect(xp, yp, charWd * sx, charHt * sy, ILI9341_BLACK);
-    return;
-  }
-  if (xp < screenWd)
-    drawChar(xp, yp, c, fg, bg, sx, sy);
-  xp += charWd * sx;
-  if (xp >= screenWd && wrap)
-    scroll();
+  return micros() - start;
 }
-void printString(char *str)
+unsigned long testFilledRoundRects()
 {
-  while (*str)
-    printChar(*str++);
-}
-void setupScroll(uint16_t tfa, uint16_t bfa)
-{
-  tft.writecommand(ILI9341_VSCRDEF); // Vertical scroll definition
-  tft.writedata(tfa >> 8);
-  tft.writedata(tfa);
-  tft.writedata((320 - tfa - bfa) >> 8);
-  tft.writedata(320 - tfa - bfa);
-  tft.writedata(bfa >> 8);
-  tft.writedata(bfa);
-}
-void checkButtons()
-{
-  wrap = digitalRead(WRAP_PIN) ? 0 : 1;
-  int orient = digitalRead(HORIZ_PIN) ? 0 : 1;
-  if (orient != horizontal)
+  unsigned long start;
+  int i, i2,
+      cx = tft.width() / 2 - 1,
+      cy = tft.height() / 2 - 1;
+  tft.fillScreen(BLACK);
+  start = micros();
+  for (i = min(tft.width(), tft.height()); i > 20; i -= 6)
   {
-    horizontal = orient;
-    scrollMode = horizontal ? 0 : 1;
-    tft.setRotation(horizontal ? 1 : 2);
-    screenWd = tft.width();
-    screenHt = tft.height();
+    i2 = i / 2;
+    tft.fillRoundRect(cx - i2, cy - i2, i, i, i / 8, DARKCYAN);
   }
+  return micros() - start;
 }
 void setup()
 {
-  Serial.begin(115200);
-  pinMode(WRAP_PIN, INPUT_PULLUP);
-  pinMode(HORIZ_PIN, INPUT_PULLUP);
-  tft.begin();
-  //  tft.setRotation(2);
-  setupScroll(0, 0);
-  checkButtons();
-  tft.setCursor(0, 0);
-  tft.fillScreen(ILI9341_BLACK);
-  sx = 1;
-  sy = 2;
-  printString("\e[0;44m *** Terminal Init *** \e[0m\n");
-  sy = 1;
+  delay(1000);
+  Serial.begin(9600);
+  Serial.println("STM32_TFT_8bit Test!");
+  ID = tft.readID();
+  tft.setResolution(320, 480); // Set your resolution
+  Serial.print("Device ID: 0x");
+  Serial.println(ID, HEX);
+  tft.begin(ID);
+  uint32_t width = tft.width();
+  Serial.print("Width: ");
+  Serial.println(width);
+  uint32_t height = tft.height();
+  Serial.print("Height: ");
+  Serial.println(height);
+  Serial.println(F("Benchmark                Time (microseconds)"));
+  Serial.print(F("Screen fill              "));
+  Serial.println(testFillScreen());
+  delay(500);
+  Serial.print(F("Text                     "));
+  Serial.println(testText(ID));
+  delay(3000);
+  Serial.print(F("Lines                    "));
+  Serial.println(testLines(CYAN));
+  delay(500);
+  Serial.print(F("Horiz/Vert Lines         "));
+  Serial.println(testFastLines(RED, BLUE));
+  delay(500);
+  Serial.print(F("Rectangles (outline)     "));
+  Serial.println(testRects(GREEN));
+  delay(500);
+  Serial.print(F("Rectangles (filled)      "));
+  Serial.println(testFilledRects(YELLOW, MAGENTA));
+  delay(500);
+  Serial.print(F("Circles (filled)         "));
+  Serial.println(testFilledCircles(10, MAGENTA));
+  Serial.print(F("Circles (outline)        "));
+  Serial.println(testCircles(10, WHITE));
+  delay(500);
+  Serial.print(F("Triangles (outline)      "));
+  Serial.println(testTriangles());
+  delay(500);
+  Serial.print(F("Triangles (filled)       "));
+  Serial.println(testFilledTriangles());
+  delay(500);
+  Serial.print(F("Rounded rects (outline)  "));
+  Serial.println(testRoundRects());
+  delay(500);
+  Serial.print(F("Rounded rects (filled)   "));
+  Serial.println(testFilledRoundRects());
+  delay(500);
+  Serial.println(F("Done!"));
 }
 void loop(void)
 {
-  checkButtons();
-  while (Serial.available())
-    printChar(Serial.read());
+  for (uint8_t rotation = 0; rotation < 4; rotation++)
+  {
+    tft.setRotation(rotation);
+    testText(ID);
+    delay(1000);
+  }
 }
