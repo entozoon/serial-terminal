@@ -1,6 +1,5 @@
 #include <Arduino.h>
 //
-//
 // //
 // // BLINK
 // //
@@ -26,20 +25,7 @@
 // void setup()
 // {
 //   tft.begin();
-//   tft.fillScreen(ILI9341_MAROON);
-//   tft.setTextColor(ILI9341_WHITE);
-//   tft.setTextSize(3);
-//   tft.setCursor(40, 100);
-//   tft.println("Serial");
-//   tft.setCursor(40, 150);
-//   tft.println("Monitor");
-//   tft.setCursor(40, 200);
-//   tft.println("Bitch");
-//   delay(2000);
-//   tft.fillScreen(ILI9341_BLACK);
-//   tft.setTextSize(1);
-//   tft.setCursor(0, 0);
-//   tft.setTextColor(ILI9341_ORANGE);
+//   tft.fillScreen(ILI9341_RED);
 // }
 // void loop()
 // {
@@ -49,73 +35,34 @@
 // HERE WE GO
 //
 #include "SPI.h"
-#include <Adafruit_GFX.h>     // Core graphics library, with extra fonts.
-#include <Adafruit_ILI9341.h> // STM32 DMA Hardware-specific library
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+//
+bool shouldScroll = true;
+bool wrap = true;
+//
 // CS,DC,RST (also built-in SCK PA5, MISO PA6, MOSI PA7)
 Adafruit_ILI9341 tft = Adafruit_ILI9341(PA4, PA2, PA3); // works and faster!
+//
 #define ILI9341_VSCRDEF 0x33
 #define ILI9341_VSCRSADD 0x37
-int xp = 0;
-int yp = 0;
 uint16_t bg = ILI9341_BLACK;
-uint16_t fg = ILI9341_WHITE;
+uint16_t fg = ILI9341_ORANGE; // allows escape codes tho!
 int screenWd = 240;
 int screenHt = 320;
-int wrap = 1;
 int bold = 0;
+int xp = 0;
+int yp = 0;
 int sx = 1;
 int sy = 1;
-bool shouldScroll = true;
-#define WRAP_PIN PB9
-#define HORIZ_PIN PB8
-// Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC, TFT_RST); // Use hardware SPI
-// Uncomment below the font you find the most readable for you
-// 7x8 bold - perfect for small term font
-#include "font_b7x8.h"
-const uint16_t *fontRects = font_b7x8_Rects;
-const uint16_t *fontOffs = font_b7x8_CharOffs;
-int charWd = 7;
-int charHt = 10; // real 8
+#include "font_6x8.h"
+const uint16_t *fontRects = font_6x8_Rects;
+const uint16_t *fontOffs = font_6x8_CharOffs;
+int charWd = 6;
+int charHt = 9; // real 8
 int charYoffs = 1;
-// 7x8 - perfect for small terminal font
-//#include "font_7x8.h"
-//const uint16_t *fontRects = font_7x8_Rects;
-//const uint16_t *fontOffs = font_7x8_CharOffs;
-//int charWd = 7;
-//int charHt = 10; // real 8
-//int charYoffs = 1;
-// 6x8
-//#include "font_6x8.h"
-//const uint16_t *fontRects = font_6x8_Rects;
-//const uint16_t *fontOffs = font_6x8_CharOffs;
-//int charWd = 6;
-//int charHt = 9; // real 8
-//int charYoffs = 1;
-// nice 8x16 vga terminal font
-//#include "font_term_8x16.h"
-//const uint16_t *fontRects = wlcd_font_term_8x16_0_127_Rects;
-//const uint16_t *fontOffs = wlcd_font_term_8x16_0_127_CharOffs;
-//int charWd = 8;
-//int charHt = 16;
-//int charYoffs = 0;
-// nice big for terminal
-//#include "font_fxs_8x15.h"
-//const uint16_t *fontRects = wlcd_font_fxs_8x15_16_127_Rects;
-//const uint16_t *fontOffs = wlcd_font_fxs_8x15_16_127_CharOffs;
-//int charWd = 8;
-//int charHt = 15; // real 15
-//int charYoffs = 0;
-// my nice 10x16 term
-//#include "font_term_10x16.h"
-//const uint16_t *fontRects = font_term_10x16_Rects;
-//const uint16_t *fontOffs = font_term_10x16_CharOffs;
-//int charWd = 10;
-//int charHt = 16;
-//int charYoffs = 0;
 void scrollFrame(uint16_t vsp)
 {
-  Serial.print("scrollFrame ");
-  Serial.println(vsp);
   // old writecommand(), instead use spiWrite and wrap in DC LOW DC HIGH
   // Also put the whole thing in startWrite endWrite
   tft.startWrite();
@@ -143,7 +90,6 @@ void scroll()
 }
 void setupScroll(uint16_t tfa, uint16_t bfa)
 {
-  Serial.println("Setup scroll");
   tft.startWrite();
   tft.SPI_DC_LOW();
   tft.spiWrite(ILI9341_VSCRDEF); // Vertical scroll definition
@@ -303,12 +249,12 @@ void printString(char *str)
 void setup()
 {
   Serial.begin(115200);
-  pinMode(WRAP_PIN, INPUT_PULLUP);
-  pinMode(HORIZ_PIN, INPUT_PULLUP);
   tft.begin();
+  tft.setRotation(2);
+  tft.fillScreen(ILI9341_BLACK);
+  // tft.setTextSize(3);
   // tft.fillScreen(ILI9341_MAROON);
   // tft.setTextColor(ILI9341_WHITE);
-  // tft.setTextSize(3);
   // tft.setCursor(40, 100);
   // tft.println("Serial");
   // tft.setCursor(40, 150);
@@ -316,17 +262,16 @@ void setup()
   // tft.setCursor(40, 200);
   // tft.println("Bitch");
   // delay(2000);
-  // tft.fillScreen(ILI9341_BLACK);
-  // tft.setTextSize(1);
-  // tft.setCursor(0, 0);
-  // tft.setTextColor(ILI9341_ORANGE);
-  tft.setRotation(2);
   setupScroll(0, 0);
   tft.setCursor(0, 0);
-  tft.fillScreen(ILI9341_BLACK);
-  sx = 1;
+  // Supports oldschool ascii codes within the feed!
+  sx = 2;
   sy = 2;
-  printString("\e[0;44m *** Serial Monitor Bitch *** \e[0m\n");
+  printString("\e[0;41m    Serial          ");
+  printString("\e[0;41m       Monitor      ");
+  printString("\e[0;41m          Bitch     \e[0m\n");
+  printString("\e[0;33m"); // get it back to orange on black
+  sx = 1;
   sy = 1;
 }
 void loop(void)
