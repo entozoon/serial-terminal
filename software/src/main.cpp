@@ -48,13 +48,15 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(PA4, PA2, PA3); // works and faster!
 #define ILI9341_VSCRSADD 0x37
 uint16_t bg = ILI9341_BLACK;
 uint16_t fg = ILI9341_ORANGE; // allows escape codes tho!
-int screenWd = 240;
-int screenHt = 320;
+int screenWidth = 240;
+int screenHeight = 320;
+bool verticalFlip = false;
 int bold = 0;
 int xp = 0;
 int yp = 0;
 int sx = 1;
 int sy = 1;
+int baud = 0;
 #include "font_6x8.h"
 const uint16_t *fontRects = font_6x8_Rects;
 const uint16_t *fontOffs = font_6x8_CharOffs;
@@ -78,11 +80,16 @@ void scroll()
 {
   xp = 0;
   yp += charHt * sy;
-  if (yp + charHt > screenHt)
+  if (yp + charHt > screenHeight)
     yp = 0;
-  tft.fillRect(0, yp, screenWd, charHt * sy, ILI9341_BLACK);
+  tft.fillRect(0, yp, screenWidth, charHt * sy, ILI9341_BLACK);
   if (shouldScroll)
-    scrollFrame(320 - yp - charHt * sy);
+  {
+    if (verticalFlip)
+      scrollFrame(screenHeight - yp - charHt * sy);
+    else
+      scrollFrame(yp + charHt * sy);
+  }
   else
     scrollFrame(0);
   // Serial.println("Random scrolling");
@@ -96,20 +103,20 @@ void setupScroll(uint16_t tfa, uint16_t bfa)
   tft.SPI_DC_HIGH();
   tft.spiWrite(tfa >> 8);
   tft.spiWrite(tfa);
-  tft.spiWrite((320 - tfa - bfa) >> 8);
-  tft.spiWrite(320 - tfa - bfa);
+  tft.spiWrite((screenHeight - tfa - bfa) >> 8);
+  tft.spiWrite(screenHeight - tfa - bfa);
   tft.spiWrite(bfa >> 8);
   tft.spiWrite(bfa);
   // tft.spiWrite(tfa);
-  // tft.spiWrite(320 - tfa - bfa);
+  // tft.spiWrite(screenHeight - tfa - bfa);
   // tft.spiWrite(bfa);
   tft.endWrite();
 }
 void drawChar(int16_t x, int16_t y, unsigned char c,
               uint16_t color, uint16_t bg, uint8_t sx, uint8_t sy)
 {
-  if ((x >= screenWd) ||             // Clip right
-      (y >= screenHt) ||             // Clip bottom
+  if ((x >= screenWidth) ||          // Clip right
+      (y >= screenHeight) ||         // Clip bottom
       ((x + charWd * sx - 1) < 0) || // Clip left
       ((y + charHt * sy - 1) < 0))   // Clip top
     return;
@@ -235,10 +242,10 @@ void printChar(char c)
     tft.fillRect(xp, yp, charWd * sx, charHt * sy, ILI9341_BLACK);
     return;
   }
-  if (xp < screenWd)
+  if (xp < screenWidth)
     drawChar(xp, yp, c, fg, bg, sx, sy);
   xp += charWd * sx;
-  if (xp >= screenWd && wrap)
+  if (xp >= screenWidth && wrap)
     scroll();
 }
 void printString(char *str)
@@ -248,9 +255,14 @@ void printString(char *str)
 }
 void setup()
 {
-  Serial.begin(115200);
+  pinMode(PB0, INPUT_PULLUP);
+  baud = digitalRead(PB0) ? 115200 : 9600;
+  Serial.begin(baud);
   tft.begin();
-  tft.setRotation(2);
+  if (verticalFlip)
+    tft.setRotation(2);
+  else
+    tft.setRotation(0);
   tft.fillScreen(ILI9341_BLACK);
   // tft.setTextSize(3);
   // tft.fillScreen(ILI9341_MAROON);
@@ -267,10 +279,17 @@ void setup()
   // Supports oldschool ascii codes within the feed!
   sx = 2;
   sy = 2;
+  printString("\e[0;41m                    ");
   printString("\e[0;41m    Serial          ");
   printString("\e[0;41m       Monitor      ");
-  printString("\e[0;41m          Bitch     \e[0m\n");
-  printString("\e[0;33m"); // get it back to orange on black
+  printString("\e[0;41m          Bitch     ");
+  printString("\e[0;41m                    \n\e[0m");
+  // I fuckin hate C. Can't be arsed to convert it
+  if (baud == 115200)
+    printString("  Baud rate 115200\n");
+  else
+    printString("   Baud rate 9600\n");
+  printString("\n\e[0;33m"); // get it back to orange on black
   sx = 1;
   sy = 1;
 }
